@@ -31,6 +31,9 @@ test('wrangler.jsonc: binding dan migrasi DO SQLite', () => {
   assert.deepEqual(w.migrations[0].new_sqlite_classes, ['TenantLock']);
   assert.ok(w.assets.run_worker_first.includes('/api/*'));
   assert.equal(w.keep_vars, true);
+  assert.equal(w.kv_namespaces.length, 1);
+  assert.equal(w.kv_namespaces[0].binding, 'REGISTRY');
+  assert.match(w.kv_namespaces[0].id, /^[0-9a-f]{32}$/);
   // Tiada rahsia atau emel peribadi dalam vars
   const larangan = ['GOOGLE_CLIENT_SECRET', 'SESSION_SECRET', 'TOKEN_ENC_KEY', 'ADMIN_TOKEN', 'BCL_WEBHOOK_KEY',
     'BCL_API_TOKEN', 'TURNSTILE_SECRET', 'OWNER_EMAILS', 'SPIKE_EMAILS'];

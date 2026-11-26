@@ -18,8 +18,8 @@
     "run_worker_first": ["/api/*", "/bcl/*"]
   },
 
-  // KV REGISTRY: ditambah selepas pemilik cipta namespace dan beri ID (ID bukan rahsia).
-  // "kv_namespaces": [{ "binding": "REGISTRY", "id": "<ID>" }],
+  // KV REGISTRY (namespace "annur-booking-registry"). ID namespace bukan rahsia.
+  "kv_namespaces": [{ "binding": "REGISTRY", "id": "0309e5494b42403c8cb54f7f90cbdc5b" }],
 
   "durable_objects": {
     "bindings": [{ "name": "TENANT_LOCK", "class_name": "TenantLock" }]

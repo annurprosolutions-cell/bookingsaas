@@ -27,7 +27,7 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TenantLock"] }],
 
   "vars": {
-    "GOOGLE_CLIENT_ID": "",
+    "GOOGLE_CLIENT_ID": "166391390903-21ubr3c3oclihgl7inpu4t2vg2en7lhe.apps.googleusercontent.com",
     "TURNSTILE_SITE_KEY": "",
     "BCL_FORM_ID": "",
     "TRIAL_DAYS": "14",

@@ -2,7 +2,7 @@
 // Nilai GOOGLE_CLIENT_ID dan TURNSTILE_SITE_KEY mesti sama dengan "vars" dalam wrangler.jsonc.
 window.ANNUR_CONFIG = Object.freeze({
   version: '0.0.1',
-  googleClientId: '',
+  googleClientId: '166391390903-21ubr3c3oclihgl7inpu4t2vg2en7lhe.apps.googleusercontent.com',
   turnstileSiteKey: '',
   scopes: 'openid email https://www.googleapis.com/auth/drive.file'
 });

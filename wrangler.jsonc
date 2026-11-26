@@ -29,10 +29,10 @@
   "vars": {
     "GOOGLE_CLIENT_ID": "166391390903-21ubr3c3oclihgl7inpu4t2vg2en7lhe.apps.googleusercontent.com",
     "TURNSTILE_SITE_KEY": "0x4AAAAAAGT5W0cOHVd9nvKA",
-    "BCL_FORM_ID": "",
+    "BCL_FORM_ID": "23030",
     "TRIAL_DAYS": "14",
     "GRACE_DAYS": "7",
-    "BUY_URL": "",
+    "BUY_URL": "https://annurprosolutions1.bcl.my/form/annur-booking",
     "PRICE_MONTH": "100",
     "PRICE_YEAR": "1000",
     "ALLOWED_ORIGINS": "https://booking.annurpro.com"

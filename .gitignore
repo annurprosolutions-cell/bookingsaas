@@ -1,0 +1,11 @@
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+*.log
+.DS_Store
+# Fail sebenar pelanggan / eksport jangan dicommit
+scratch/
+manual-pemilik/

@@ -1,0 +1,19 @@
+# Apa-apa yang TIDAK disenaraikan di sini akan jadi AWAM di booking.annurpro.com
+.git
+.git/
+.github/
+.gitignore
+.assetsignore
+.wrangler/
+.dev.vars
+node_modules/
+wrangler.jsonc
+package.json
+package-lock.json
+README.md
+tests/
+worker/
+docs/
+tools/
+manual-pemilik/
+scratch/

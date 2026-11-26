@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Prototaip Fasa 0</title>
+  <link rel="stylesheet" href="/css/asas.css">
+  <script src="/config.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="/spike/spike.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>Prototaip Fasa 0</h1>
+    <p class="muted">Ujian teknikal sebelum sistem sebenar dibina. Guna emel Gmail UJIAN, bukan emel studio sebenar. Halaman ini akan dibuang selepas lulus.</p>
+    <p id="amaran" class="card" hidden></p>
+
+    <div class="card stack">
+      <h2>Ujian A + B: Login Google dan cipta Sheet</h2>
+      <p class="muted">Bila Google tanya kebenaran, pastikan kotak Google Drive DITANDA.</p>
+      <button class="btn" id="btnLogin" type="button">1. Login Google &amp; cipta Sheet</button>
+      <div id="outLogin" class="result" hidden></div>
+    </div>
+
+    <div class="card stack">
+      <h2>Ujian C: Worker tulis ke Sheet sendiri</h2>
+      <p class="muted">Pelayar tidak pegang token Google. Worker guna refresh token yang disimpan (dienkripsi). Ulang ujian ini selepas 1 jam atau esok.</p>
+      <button class="btn" id="btnWrite" type="button" disabled>2. Tulis satu baris dari Worker</button>
+      <div id="outWrite" class="result" hidden></div>
+    </div>
+
+    <div class="card stack">
+      <h2>Ujian D: Kunci anti double booking</h2>
+      <p class="muted">Hantar banyak tempahan serentak untuk satu slot berkapasiti 1.</p>
+      <button class="btn" id="btnSim" type="button" disabled>3. Simulasi 20 serentak (tanpa Sheet)</button>
+      <button class="btn secondary" id="btnSheet" type="button" disabled>4. 5 serentak ke Sheet sebenar</button>
+      <div id="outRace" class="result" hidden></div>
+    </div>
+
+    <div class="card stack">
+      <h2>Laporan</h2>
+      <p class="muted">Salin dan tampal laporan ini dalam chat. Ia tidak mengandungi sebarang token atau rahsia.</p>
+      <div id="laporan" class="result">Belum ada keputusan.</div>
+      <button class="btn secondary" id="btnSalin" type="button">Salin laporan</button>
+      <button class="btn danger" id="btnPadam" type="button" disabled>Padam data prototaip &amp; tarik balik akses</button>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,40 @@
+// Konfigurasi Cloudflare Worker "annur-booking".
+// Nama Worker di dashboard Cloudflare MESTI sama dengan "name" di bawah.
+// RAHSIA (secrets) tidak diletak di sini. Pasang di dashboard: Worker > Settings > Variables and Secrets.
+// OWNER_EMAILS dan SPIKE_EMAILS juga dipasang di dashboard (jenis Text) supaya emel tidak masuk repo awam.
+{
+  "name": "annur-booking",
+  "main": "worker/index.mjs",
+  "compatibility_date": "2025-11-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  // Kekalkan vars yang ditambah di dashboard (OWNER_EMAILS, SPIKE_EMAILS) setiap kali deploy.
+  "keep_vars": true,
+  "observability": { "enabled": true },
+
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/bcl/*"]
+  },
+
+  // KV REGISTRY: ditambah selepas pemilik cipta namespace dan beri ID (ID bukan rahsia).
+  // "kv_namespaces": [{ "binding": "REGISTRY", "id": "<ID>" }],
+
+  "durable_objects": {
+    "bindings": [{ "name": "TENANT_LOCK", "class_name": "TenantLock" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TenantLock"] }],
+
+  "vars": {
+    "GOOGLE_CLIENT_ID": "",
+    "TURNSTILE_SITE_KEY": "",
+    "BCL_FORM_ID": "",
+    "TRIAL_DAYS": "14",
+    "GRACE_DAYS": "7",
+    "BUY_URL": "",
+    "PRICE_MONTH": "100",
+    "PRICE_YEAR": "1000",
+    "ALLOWED_ORIGINS": "https://booking.annurpro.com"
+  }
+}

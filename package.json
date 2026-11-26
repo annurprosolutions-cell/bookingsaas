@@ -1,0 +1,10 @@
+{
+  "name": "annur-booking",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Annur Booking: sistem tempahan slot studio fotografi (multi-tenant, data dalam Google Sheet studio)",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\""
+  }
+}

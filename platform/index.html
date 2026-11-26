@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Konsol Platform</title>
+  <link rel="stylesheet" href="/css/asas.css">
+  <script src="/platform/setup-check.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>Konsol Platform</h1>
+    <p class="muted">Untuk pemilik platform sahaja. Konsol penuh (studio, licence, bayaran) dibina dalam Fasa 5.</p>
+
+    <div class="card">
+      <h2>Semak setup</h2>
+      <p class="muted">Taip ADMIN_TOKEN dari password manager anda. Token ini hanya dihantar ke server Annur Booking anda sendiri. Jangan tampal dalam chat.</p>
+      <form id="f" autocomplete="off">
+        <label for="tok">ADMIN_TOKEN</label>
+        <input id="tok" type="password" autocomplete="off" spellcheck="false" required>
+        <button class="btn" id="go" type="submit">Semak sekarang</button>
+      </form>
+      <p id="ringkas" class="muted mt" role="status"></p>
+      <div id="senarai"></div>
+    </div>
+  </main>
+</body>
+</html>

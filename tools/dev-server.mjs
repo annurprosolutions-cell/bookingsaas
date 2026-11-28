@@ -67,7 +67,9 @@ http
       const r = new Request(url, { method: req.method, headers: req.headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : Buffer.concat(chunks) });
       out = await handle(r, env, { fetch: g.fetch });
     } else {
+      // Seperti Cloudflare: fail statik dahulu; jika tiada, permintaan diteruskan ke Worker (cth /<slug>)
       out = await staticResponse(path);
+      if (out.status === 404) out = await handle(new Request(url, { method: req.method, headers: req.headers }), env, { fetch: g.fetch });
     }
     res.writeHead(out.status, Object.fromEntries(out.headers));
     res.end(Buffer.from(await out.arrayBuffer()));

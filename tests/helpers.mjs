@@ -1,6 +1,8 @@
 // Pembantu ujian Worker. Fixture asas ada dalam tests/fixtures/.
 import { TenantLock } from '../worker/tenant-lock.js';
 import { clearTokenCache } from '../worker/registry.js';
+import { clearPublicCache } from '../worker/public.js';
+import { readFileSync } from 'node:fs';
 import { handle } from '../worker/index.mjs';
 import { b64urlEncode } from '../worker/lib/crypto.js';
 import { fakeKv } from './fixtures/fake-kv.mjs';
@@ -16,9 +18,12 @@ export function fakeDoNamespace(getEnv, fetchFn) {
   const instances = new Map();
   const state = { storage: { sql: { exec: () => ({ one: () => ({ x: 1 }) }) } } };
   return {
+    _instances: instances,
     idFromName: (n) => 'id:' + n,
     get(id) {
-      if (!instances.has(id)) instances.set(id, new TenantLock(state, getEnv(), { fetch: fetchFn }));
+      if (!instances.has(id)) {
+        instances.set(id, new TenantLock(state, getEnv(), { fetch: fetchFn, now: () => getEnv().__now ?? Date.now() }));
+      }
       const inst = instances.get(id);
       return {
         fetch: (input, init) => inst.fetch(input instanceof Request ? input : new Request(input, init))
@@ -56,12 +61,14 @@ export function makeEnv(google, extra = {}) {
     ALLOWED_ORIGINS: 'https://booking.annurpro.com',
     REGISTRY: fakeKv(),
     ASSETS: fakeAssets({
-      '/config.js': "window.ANNUR_CONFIG = { googleClientId: '" + CLIENT_ID + "', turnstileSiteKey: '0x4AAAAAAAAAAA-site' };"
+      '/config.js': "window.ANNUR_CONFIG = { googleClientId: '" + CLIENT_ID + "', turnstileSiteKey: '0x4AAAAAAAAAAA-site' };",
+      '/studio/': readFileSync(new URL('../studio/index.html', import.meta.url), 'utf8')
     }),
     ...extra
   };
   env.TENANT_LOCK = fakeDoNamespace(() => env, google ? google.fetch : fetch);
   clearTokenCache();
+  clearPublicCache();
   return env;
 }
 
@@ -80,6 +87,7 @@ export const XHR = { 'x-requested-with': 'XMLHttpRequest', origin: ORIGIN };
 
 // Panggil Worker dan pulangkan { status, j }
 export async function call(env, g, path, { method = 'GET', body, token, headers = {}, now = NOW } = {}) {
+  env.__now = now;
   const r = await handle(req(path, { method, body, token, headers: { ...(method !== 'GET' ? XHR : {}), ...headers } }), env, {
     fetch: g.fetch,
     now: () => now
@@ -114,3 +122,19 @@ export const WIZARD = {
   addons: [{ nama: 'Frame', harga: 30 }, { nama: '', harga: '' }],
   templat: 'raya'
 };
+
+// Studio siap (login + wizard). Pulangkan { g, env, sesi, tid, sheetId, sheet(tab) }
+export async function setupStudio({ google, body = WIZARD, extra } = {}) {
+  const g = fakeGoogle(google);
+  const env = makeEnv(g, extra);
+  const { j } = await login(env, g);
+  const r = await call(env, g, '/api/tenant/setup', { method: 'POST', body, token: j.sesi });
+  if (r.status !== 200) throw new Error('setup gagal: ' + JSON.stringify(r.j));
+  const tid = env.REGISTRY._map.get('owner:ujian@gmail.com');
+  const sheetId = JSON.parse(env.REGISTRY._map.get('tenant:' + tid)).sheetId;
+  const sheet = (tab) => g.state.sheets.get(sheetId).tabs[tab].rows;
+  return { g, env, sesi: j.sesi, tid, sheetId, sheet };
+}
+
+let tokN = 0;
+export const turnstileToken = () => 'tok-' + ++tokN;

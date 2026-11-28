@@ -121,6 +121,15 @@ export function fakeGoogle(opts = {}) {
       }
       return res({ error: 'unsupported_grant_type' }, 400);
     }
+    if (url === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
+      // Turnstile palsu: token "gagal" atau token yang sudah digunakan ditolak (token sebenar sekali guna)
+      const p = new URLSearchParams(init.body);
+      const t = p.get('response');
+      state.turnstile = state.turnstile || new Set();
+      const ok = !!t && t !== 'gagal' && !state.turnstile.has(t) && !!p.get('secret');
+      if (t) state.turnstile.add(t);
+      return res({ success: ok, 'error-codes': ok ? [] : ['invalid-input-response'] });
+    }
     if (url === 'https://oauth2.googleapis.com/revoke') {
       state.revoked.push(new URLSearchParams(init.body).get('token'));
       return res({});

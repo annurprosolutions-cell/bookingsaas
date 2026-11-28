@@ -71,7 +71,7 @@ export const RESERVED_SLUGS = [
   'admin', 'app', 'api', 'daftar', 'login', 'platform', 'privasi', 'terma', 'panduan', 'demo', 'salepage', 'static',
   'assets', 'bcl', 'sw', 'manifest', 'css', 'js', 'tools', 'docs',
   // laluan statik sebenar dalam repo ini
-  'fonts', 'icons', 'robots', 'favicon'
+  'fonts', 'icons', 'robots', 'favicon', 'studio'
 ];
 const SLUG_RE = /^[a-z0-9]([a-z0-9-]{1,28})[a-z0-9]$/;
 

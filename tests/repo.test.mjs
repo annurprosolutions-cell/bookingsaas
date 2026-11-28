@@ -55,3 +55,15 @@ test('.assetsignore menyorok kod Worker, ujian, alat dan dokumen', () => {
     assert.ok(lines.includes(p), p + ' mesti ada dalam .assetsignore');
   }
 });
+
+test('CSP halaman /<slug> (Worker) sama dengan _headers (fail statik)', async () => {
+  const { CSP } = await import('../worker/public.js');
+  const line = read('_headers').split('\n').find((l) => l.trim().startsWith('Content-Security-Policy:'));
+  assert.equal(line.trim().slice('Content-Security-Policy:'.length).trim(), CSP);
+});
+
+test('templat studio/index.html ada penanda suntikan dan tiada <base>', () => {
+  const t = read('studio/index.html');
+  assert.ok(t.includes('<!--ANNUR_HEAD-->') && t.includes('<!--ANNUR_DATA-->'));
+  assert.ok(!/<base /.test(t));
+});

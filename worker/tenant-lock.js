@@ -10,6 +10,7 @@
 // `recent` menutup jurang konsistensi KV (sehingga ~60 saat) untuk tulisan yang baru dibuat.
 
 import { createMutex } from './lib/mutex.js';
+import { StudioState, googleFailure } from './studio-state.js';
 
 const RECENT_MS = 120000;
 
@@ -22,6 +23,8 @@ export class TenantLock {
     this.state = state;
     this.env = env;
     this.now = deps.now || (() => Date.now());
+    this.fetchFn = deps.fetch || ((...a) => fetch(...a));
+    this.studio = null;
     this.lock = createMutex();
     this.recent = new Map(); // kunci KV -> { v, t }
   }
@@ -44,6 +47,15 @@ export class TenantLock {
       const b = await request.json();
       return jsonRes(this.leaseOp(b));
     }
+    if (url.pathname.startsWith('/public/') && request.method === 'POST') {
+      const b = await request.json();
+      return jsonRes(await this.publicOp(url.pathname.slice(8), b));
+    }
+    if (url.pathname === '/invalidate' && request.method === 'POST') {
+      const b = await request.json().catch(() => ({}));
+      if (this.studio) this.studio.invalidate(b);
+      return jsonRes({ ok: true });
+    }
     if (url.pathname === '/registry' && request.method === 'POST') {
       const body = await request.json();
       try {
@@ -53,6 +65,21 @@ export class TenantLock {
       }
     }
     return jsonRes({ ok: false, kod: 'tiada-laluan' }, 404);
+  }
+
+  // ---- halaman awam studio (instance "tenant:<tid>") ----
+  async publicOp(op, b) {
+    if (!this.studio) this.studio = new StudioState({ env: this.env, fetch: this.fetchFn, now: this.now });
+    const st = this.studio;
+    try {
+      if (op === 'config') return { status: 200, ok: true, config: await st.config(b.tenant, b.today) };
+      if (op === 'slots') return { status: 200, ok: true, ...(await st.slots(b.tenant, b.tarikh, b.today)) };
+      if (op === 'book') return await st.book(b.tenant, b);
+      if (op === 'status') return await st.status(b.tenant, b);
+      return { status: 404, ok: false, kod: 'tiada' };
+    } catch (e) {
+      return googleFailure(e);
+    }
   }
 
   // ---- pajakan dalam memori: satu operasi panjang (cth setup Sheet) pada satu masa per tenant ----

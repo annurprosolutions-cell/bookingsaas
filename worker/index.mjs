@@ -8,6 +8,7 @@ import { setupCheck } from './setup-check.js';
 import { authGoogle, authLogout, me, reconnect, deleteAccount } from './auth.js';
 import { slugCheck, tenantSetup } from './tenant.js';
 import { SetupError } from './sheet-setup.js';
+import { publicApi, studioPage, studioManifest } from './public.js';
 import { TenantLock } from './tenant-lock.js';
 import { VERSION } from './version.js';
 
@@ -79,6 +80,16 @@ export async function handle(request, env, deps = {}) {
       return json({ ok: true, versi: VERSION, ...(await setupCheck(env, url.origin)) });
     }
 
+    const pub = /^\/api\/public\/([^/]{1,40})\/(config|slots|book|status)$/.exec(path);
+    if (pub) {
+      if (request.method === 'POST' && !sameOrigin(request, env)) return error(403, 'origin', 'Origin tidak dibenarkan');
+      try {
+        return await publicApi(request, env, d, pub[1], pub[2]);
+      } catch (e) {
+        return routeError(e);
+      }
+    }
+
     if (path.startsWith('/api/') || path === '/api') {
       const route = ROUTES.find(([, p]) => p === path);
       if (!route) return error(404, 'tiada', 'Tidak dijumpai');
@@ -95,7 +106,23 @@ export async function handle(request, env, deps = {}) {
     // /bcl/<KEY> dibina dalam Fasa 5.
     if (path.startsWith('/bcl/')) return error(404, 'tiada', 'Tidak dijumpai');
 
-    // Selain itu: static assets. (Halaman /<slug> dibina dalam Fasa 3.)
+    // Halaman awam studio /<slug> (fail statik sedia ada sudah dihidang oleh lapisan assets sebelum sampai ke sini)
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      const man = /^\/([a-z0-9-]{3,30})\/manifest\.webmanifest$/.exec(path);
+      if (man) return await studioManifest(request, env, d, man[1]);
+      const m = /^\/([A-Za-z0-9-]{3,30})\/?$/.exec(path);
+      if (m) {
+        const lower = m[1].toLowerCase();
+        if (lower !== m[1]) return Response.redirect(url.origin + '/' + lower + url.search, 301);
+        if (env.ASSETS) {
+          // Fail/folder statik dengan nama yang sama (cth /daftar) diutamakan
+          const asset = await env.ASSETS.fetch(request);
+          if (asset.status !== 404) return withSecurityHeaders(asset);
+        }
+        return await studioPage(request, env, d, lower);
+      }
+    }
+
     if (env.ASSETS) return withSecurityHeaders(await env.ASSETS.fetch(request));
     return error(404, 'tiada', 'Tidak dijumpai');
   } catch {

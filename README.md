@@ -8,6 +8,7 @@ Stack: PWA vanilla HTML/CSS/JS (tanpa build step) + satu Cloudflare Worker (stat
 - Fasa 0 (asas dan prototaip risiko): siap. Lihat `docs/panduan-fasa-0.md`.
 - Fasa 1 (teras logik): siap. Modul tulen dalam `js/core/` dengan ujian unit.
 - Fasa 2 (login Google, wizard, cipta Sheet): siap. Panduan ujian: `docs/panduan-fasa-2.md`.
+- Fasa 3 (halaman awam, tempahan tanpa double booking, semak status): siap. Panduan ujian: `docs/panduan-fasa-3.md`.
 
 ## Struktur
 | Laluan | Isi | Awam? |
@@ -16,6 +17,7 @@ Stack: PWA vanilla HTML/CSS/JS (tanpa build step) + satu Cloudflare Worker (stat
 | `js/core/` | Logik tulen dikongsi pelayar, Worker dan Node: `dates`, `validate`, `pricing`, `availability`, `licence`, `sheet-schema` | Ya (tiada rahsia) |
 | `platform/` | Konsol pemilik platform (Fasa 0: semak setup) | Ya (API dilindungi `ADMIN_TOKEN`) |
 | `daftar/`, `app/` | S-02/S-03 (login + wizard) dan dashboard studio | Ya (API dilindungi sesi) |
+| `studio/index.html` | Templat halaman awam `/<slug>` (Worker suntik tajuk, meta OG dan config) | Ya |
 | `fonts/`, `icons/` | Inter (OFL) dan sprite Phosphor (MIT), self-host | Ya |
 | `worker/` | Kod Worker (`index.mjs`, `lib/`, `tenant-lock.js`) | Tidak |
 | `tests/` | Ujian `node --test`; `tests/fixtures/` = KV dan Google/Sheets palsu | Tidak |

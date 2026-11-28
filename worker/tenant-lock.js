@@ -1,28 +1,29 @@
-// Durable Object TenantLock: satu instance per studio.
-// Fasa 0: hanya /ping (semak SQLite) dan /spike/race (ujian kunci serentak).
-// Fasa 3 akan menambah indeks kekosongan slot dan laluan tempahan sebenar.
+// Durable Object TenantLock (SQLite-backed, tanpa data kekal).
+//
+// Dua kegunaan:
+// 1. Instance bernama "registry" (satu sahaja): serialisasi operasi registry yang mesti unik
+//    - cipta tenant untuk satu emel (satu emel = satu studio, klik berganda tidak cipta dua)
+//    - tuntut slug (dua studio tidak boleh dapat slug yang sama walaupun serentak)
+// 2. Satu instance per studio (Fasa 3): indeks kekosongan slot dan laluan tempahan.
+//
+// KV tidak ada operasi atomik "semak dan tulis", jadi semua semakan+tulisan unik dibuat di sini dalam mutex.
+// `recent` menutup jurang konsistensi KV (sehingga ~60 saat) untuk tulisan yang baru dibuat.
 
 import { createMutex } from './lib/mutex.js';
-import { decryptText } from './lib/crypto.js';
-import { refreshAccessToken, valuesAppend, a1 } from './lib/google.js';
-import { isoMY } from './lib/time.js';
+
+const RECENT_MS = 120000;
 
 function jsonRes(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 export class TenantLock {
   constructor(state, env, deps = {}) {
     this.state = state;
     this.env = env;
-    this.fetchFn = deps.fetch || ((...a) => fetch(...a));
+    this.now = deps.now || (() => Date.now());
     this.lock = createMutex();
-    // Indeks dalam memori sahaja: kunci "runId|slot" -> bilangan terisi. Tiada PII.
-    this.terisi = new Map();
-    // Cache access token Google dalam memori (tidak pernah disimpan ke storan).
-    this.token = null;
+    this.recent = new Map(); // kunci KV -> { v, t }
   }
 
   sqliteOk() {
@@ -39,51 +40,83 @@ export class TenantLock {
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === '/ping') return jsonRes({ ok: true, sqlite: this.sqliteOk() });
-    if (url.pathname === '/spike/race' && request.method === 'POST') {
+    if (url.pathname === '/lease' && request.method === 'POST') {
+      const b = await request.json();
+      return jsonRes(this.leaseOp(b));
+    }
+    if (url.pathname === '/registry' && request.method === 'POST') {
       const body = await request.json();
-      return jsonRes(await this.spikeRace(body));
+      try {
+        return jsonRes(await this.lock(() => this.registryOp(body)));
+      } catch {
+        return jsonRes({ ok: false, kod: 'ralat' }, 500);
+      }
     }
     return jsonRes({ ok: false, kod: 'tiada-laluan' }, 404);
   }
 
-  // Access token untuk Sheet prototaip, dibaca dari KV dan diperbaharui guna refresh token.
-  async accessTokenSpike(email) {
-    const now = Date.now();
-    if (this.token && this.token.email === email && this.token.exp - 60000 > now) return this.token;
-    const raw = await this.env.REGISTRY.get('spike:' + email);
-    if (!raw) throw Object.assign(new Error('tiada rekod'), { status: 404, reason: 'tiada-rekod' });
-    const rec = JSON.parse(raw);
-    const rt = await decryptText(rec.rt, this.env.TOKEN_ENC_KEY);
-    const t = await refreshAccessToken(this.fetchFn, this.env, rt);
-    this.token = { email, access: t.access_token, exp: now + (t.expires_in || 3600) * 1000, sheetId: rec.sheetId };
-    return this.token;
+  // ---- pajakan dalam memori: satu operasi panjang (cth setup Sheet) pada satu masa per tenant ----
+  leaseOp(b) {
+    this.leases = this.leases || new Map();
+    const now = this.now();
+    const held = this.leases.get(b.name);
+    if (b.op === 'ambil') {
+      if (held && held > now) return { ok: false };
+      this.leases.set(b.name, now + Math.min(Number(b.ms) || 60000, 120000));
+      return { ok: true };
+    }
+    if (b.op === 'lepas') {
+      this.leases.delete(b.name);
+      return { ok: true };
+    }
+    return { ok: false };
   }
 
-  // Satu "tempahan" ujian untuk slot berkapasiti 1.
-  // kunci=true  : semak + tulis + kemas kini indeks dalam mutex (reka bentuk sebenar)
-  // kunci=false : tanpa mutex (mod simulasi sahaja), untuk membuktikan perlumbaan memang berlaku
-  async spikeRace(b) {
-    const key = `${b.runId}|S01`;
-    const kapasiti = 1;
-    const kerja = async () => {
-      const ada = this.terisi.get(key) || 0;
-      if (ada >= kapasiti) return { ok: false, sebab: 'slot-penuh' };
-      if (b.mode === 'sheet') {
-        const tok = await this.accessTokenSpike(b.email);
-        // Await ke Sheets API ini membuka peluang permintaan lain menyelit masuk jika tiada mutex.
-        await valuesAppend(this.fetchFn, tok.access, tok.sheetId, a1('Ujian', 'A:D'), [
-          [isoMY(), 'ujian-kunci', b.runId, 'peminta-' + b.idx]
-        ]);
-      } else {
-        await sleep(40); // simulasi masa panggilan Sheets API
-      }
-      this.terisi.set(key, (this.terisi.get(key) || 0) + 1);
-      return { ok: true };
-    };
-    try {
-      return b.kunci === false && b.mode !== 'sheet' ? await kerja() : await this.lock(kerja);
-    } catch (e) {
-      return { ok: false, sebab: 'ralat', status: e.status || 0, reason: e.reason || '' };
+  // ---- registry: baca/tulis KV dengan memori jangka pendek ----
+  async kvGet(key) {
+    const r = this.recent.get(key);
+    if (r && this.now() - r.t < RECENT_MS) return r.v;
+    return this.env.REGISTRY.get(key);
+  }
+
+  async kvPut(key, value) {
+    await this.env.REGISTRY.put(key, value);
+    this.recent.set(key, { v: value, t: this.now() });
+  }
+
+  async kvDelete(key) {
+    await this.env.REGISTRY.delete(key);
+    this.recent.set(key, { v: null, t: this.now() });
+  }
+
+  async registryOp(b) {
+    if (b.op === 'owner') {
+      // Cari atau cipta tenant untuk emel ini. Pulangkan tid sedia ada jika sudah ada.
+      const key = 'owner:' + b.email;
+      const ada = await this.kvGet(key);
+      if (ada) return { ok: true, tid: ada, baru: false };
+      await this.kvPut('tenant:' + b.tenant.tid, JSON.stringify(b.tenant));
+      await this.kvPut(key, b.tenant.tid);
+      return { ok: true, tid: b.tenant.tid, baru: true };
     }
+    if (b.op === 'slug') {
+      const key = 'slug:' + b.slug;
+      const ada = await this.kvGet(key);
+      if (ada && ada !== b.tid) return { ok: false, kod: 'slug-diambil' };
+      if (!ada) await this.kvPut(key, b.tid);
+      return { ok: true };
+    }
+    if (b.op === 'slug-check') {
+      const ada = await this.kvGet('slug:' + b.slug);
+      return { ok: true, tersedia: !ada || ada === b.tid };
+    }
+    if (b.op === 'release') {
+      // Padam akaun: lepaskan slug dan emel, hanya jika masih milik tid ini.
+      if (b.slug && (await this.kvGet('slug:' + b.slug)) === b.tid) await this.kvDelete('slug:' + b.slug);
+      if (b.email && (await this.kvGet('owner:' + b.email)) === b.tid) await this.kvDelete('owner:' + b.email);
+      await this.kvDelete('tenant:' + b.tid);
+      return { ok: true };
+    }
+    return { ok: false, kod: 'op-tidak-dikenali' };
   }
 }

@@ -62,7 +62,7 @@ test('slug: format TRD (3 hingga 30 aksara)', () => {
 });
 
 test('slug: senarai reserved ditolak', () => {
-  for (const r of ['admin', 'app', 'api', 'daftar', 'login', 'platform', 'privasi', 'terma', 'panduan', 'demo', 'salepage', 'static', 'assets', 'bcl', 'sw', 'manifest', 'css', 'js', 'tools', 'docs', 'spike']) {
+  for (const r of ['admin', 'app', 'api', 'daftar', 'login', 'platform', 'privasi', 'terma', 'panduan', 'demo', 'salepage', 'static', 'assets', 'bcl', 'sw', 'manifest', 'css', 'js', 'tools', 'docs', 'fonts', 'icons']) {
     assert.ok(RESERVED_SLUGS.includes(r), r);
     const v = validateSlug(r);
     // "sw" dan "js" terlalu pendek (format), selebihnya reserved

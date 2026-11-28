@@ -62,7 +62,7 @@ test('hujung ke hujung: Sheet palsu + teras = tiada double booking walaupun Shee
   await valuesAppend(f, AT, id, a1('Tempahan', 'A:T'), [objectToRow('Tempahan', rekod)]);
 
   // sel dalam Sheet sudah diescape; bila dibaca semula ia pulih sebagai teks asal
-  const mentah = g.state.sheets.get(id).tabs.Tempahan[1];
+  const mentah = g.state.sheets.get(id).tabs.Tempahan.rows[1];
   assert.equal(mentah[2], "'=cmd|calc");
   const semula = (await baca('Tempahan')).rows;
   assert.equal(semula.length, 1);

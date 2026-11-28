@@ -7,6 +7,7 @@ Stack: PWA vanilla HTML/CSS/JS (tanpa build step) + satu Cloudflare Worker (stat
 ## Status
 - Fasa 0 (asas dan prototaip risiko): siap. Lihat `docs/panduan-fasa-0.md`.
 - Fasa 1 (teras logik): siap. Modul tulen dalam `js/core/` dengan ujian unit.
+- Fasa 2 (login Google, wizard, cipta Sheet): siap. Panduan ujian: `docs/panduan-fasa-2.md`.
 
 ## Struktur
 | Laluan | Isi | Awam? |
@@ -14,10 +15,11 @@ Stack: PWA vanilla HTML/CSS/JS (tanpa build step) + satu Cloudflare Worker (stat
 | `index.html`, `config.js`, `css/`, `js/` | Frontend | Ya |
 | `js/core/` | Logik tulen dikongsi pelayar, Worker dan Node: `dates`, `validate`, `pricing`, `availability`, `licence`, `sheet-schema` | Ya (tiada rahsia) |
 | `platform/` | Konsol pemilik platform (Fasa 0: semak setup) | Ya (API dilindungi `ADMIN_TOKEN`) |
-| `spike/` | Prototaip Fasa 0, dibuang selepas lulus | Ya (aktif hanya bila `SPIKE_EMAILS` diisi) |
+| `daftar/`, `app/` | S-02/S-03 (login + wizard) dan dashboard studio | Ya (API dilindungi sesi) |
+| `fonts/`, `icons/` | Inter (OFL) dan sprite Phosphor (MIT), self-host | Ya |
 | `worker/` | Kod Worker (`index.mjs`, `lib/`, `tenant-lock.js`) | Tidak |
 | `tests/` | Ujian `node --test`; `tests/fixtures/` = KV dan Google/Sheets palsu | Tidak |
-| `tools/jana-rahsia.html` | Penjana rahsia, dibuka secara lokal | Tidak |
+| `tools/` | `jana-rahsia.html` (penjana rahsia), `dev-server.mjs` (pelayan dev dengan Google/KV palsu), `build-icons.mjs` | Tidak |
 | `docs/` | Panduan | Tidak |
 | `_headers` | Header keselamatan dan CSP untuk fail statik | - |
 
@@ -29,7 +31,7 @@ npm test
 ```
 Tiada kebergantungan npm. Perlukan Node 20+.
 
-Uji Worker secara lokal (pilihan): `npx wrangler dev` dengan fail `.dev.vars` (jangan commit) dan binding KV sementara.
+Pelayan dev tempatan (Google, KV dan DO palsu, tiada akaun sebenar): `node tools/dev-server.mjs` kemudian buka http://127.0.0.1:8788/daftar/. Login Google perlu dimock dalam pelayar (Playwright).
 
 ## Deploy
 Push ke `main`. Cloudflare Workers Builds deploy dalam ~30 saat. Naikkan `version` dalam `config.js` dan `worker/version.js` setiap release. Rollback: Cloudflare > Workers > annur-booking > Deployments.

@@ -70,8 +70,8 @@ export function suggestAccessibleColour(hex) {
 export const RESERVED_SLUGS = [
   'admin', 'app', 'api', 'daftar', 'login', 'platform', 'privasi', 'terma', 'panduan', 'demo', 'salepage', 'static',
   'assets', 'bcl', 'sw', 'manifest', 'css', 'js', 'tools', 'docs',
-  // laluan statik sebenar dalam repo ini (prototaip Fasa 0, dibuang kemudian)
-  'spike'
+  // laluan statik sebenar dalam repo ini
+  'fonts', 'icons', 'robots', 'favicon'
 ];
 const SLUG_RE = /^[a-z0-9]([a-z0-9-]{1,28})[a-z0-9]$/;
 
@@ -275,12 +275,21 @@ export function validateTetapan(input, { partial = false } = {}) {
         break;
       }
       case 'number': {
-        const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v.replace(/^RM/i, '').replace(/,/g, '')) : NaN;
+        if (typeof v === 'string' && v.trim() === '') {
+          // Dikosongkan: guna nilai lalai (cth harga_special ikut harga_normal)
+          value[key] = '';
+          break;
+        }
+        const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v.trim().replace(/^RM/i, '').replace(/,/g, '')) : NaN;
         if (!isFinite(n) || n < (spec.min ?? 0) || n > 1000000) errors[key] = 'Mesti nombor 0 atau lebih.';
         else value[key] = Math.round((n + Number.EPSILON) * 100) / 100;
         break;
       }
       case 'int': {
+        if (typeof v === 'string' && v.trim() === '') {
+          value[key] = '';
+          break;
+        }
         const n = toInt(v);
         if (n === null || n < (spec.min ?? 0) || (spec.max !== undefined && n > spec.max)) {
           errors[key] = spec.max !== undefined ? `Mesti nombor bulat ${spec.min} hingga ${spec.max}.` : `Mesti nombor bulat ${spec.min ?? 0} atau lebih.`;
@@ -300,4 +309,80 @@ export function validateTetapan(input, { partial = false } = {}) {
 
   if (Object.keys(errors).length) return { ok: false, errors, warnings };
   return { ok: true, value, warnings };
+}
+
+// ---- pautan imej (TRD 8) ----
+// Pautan kongsi Google Drive sering disekat bila dipaparkan terus; tukar kepada format thumbnail.
+export function normalizeImageUrl(url) {
+  const u = typeof url === 'string' ? url.trim() : '';
+  if (!u) return '';
+  const m =
+    /^https:\/\/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u) ||
+    /^https:\/\/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:.*&)?id=([A-Za-z0-9_-]{10,})/.exec(u);
+  return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1600` : u;
+}
+
+// ---- wizard setup (S-03, AFD A3) ----
+export const WIZARD_TETAPAN_KEYS = [
+  'nama_studio', 'whatsapp', 'alamat', 'maps_url', 'waktu_pagi', 'waktu_petang', 'waktu_malam',
+  'warna_utama', 'logo_url', 'harga_normal', 'harga_special', 'deposit'
+];
+export const MAX_BANNERS = 8;
+export const MAX_ADDONS = 20;
+
+export function validateAddons(list) {
+  const errors = [];
+  const value = [];
+  if (list === undefined || list === null) return { ok: true, value, errors };
+  if (!Array.isArray(list) || list.length > MAX_ADDONS) return { ok: false, value, errors: [`Maksimum ${MAX_ADDONS} add-on.`] };
+  list.forEach((a, i) => {
+    const nama = cleanText(a && a.nama);
+    const raw = a && a.harga;
+    const harga = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw.trim().replace(/^RM/i, '')) : NaN;
+    if (!nama && (raw === '' || raw === undefined || raw === null)) return; // baris kosong diabaikan
+    if (!nama || nama.length > 60) errors.push(`Add-on ${i + 1}: nama wajib (maksimum 60 aksara).`);
+    else if (/,/.test(nama)) errors.push(`Add-on ${i + 1}: nama tidak boleh mengandungi koma.`);
+    else if (!isFinite(harga) || harga < 0 || harga > 100000) errors.push(`Add-on ${i + 1}: harga mesti nombor 0 atau lebih.`);
+    else value.push({ nama, harga: Math.round((harga + Number.EPSILON) * 100) / 100 });
+  });
+  return { ok: errors.length === 0, value, errors };
+}
+
+export function validateBanners(list) {
+  if (list === undefined || list === null) return { ok: true, value: [] };
+  if (!Array.isArray(list)) return { ok: false, mesej: 'Senarai banner tidak sah.' };
+  const urls = list.map(normalizeImageUrl).filter(Boolean);
+  if (urls.length > MAX_BANNERS) return { ok: false, mesej: `Maksimum ${MAX_BANNERS} banner.` };
+  if (!urls.every(isHttpsUrl)) return { ok: false, mesej: 'Setiap banner mesti pautan https:// yang sah.' };
+  return { ok: true, value: urls };
+}
+
+// Pulangkan { ok, errors, warnings, value: { slug, tetapan, templat, addons, banners } }
+export function validateWizard(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const errors = {};
+  const sv = validateSlug(r.slug);
+  if (!sv.ok) errors.slug = sv.mesej;
+
+  const tetIn = {};
+  for (const k of WIZARD_TETAPAN_KEYS) if (r[k] !== undefined) tetIn[k] = r[k];
+  if (typeof tetIn.logo_url === 'string') tetIn.logo_url = normalizeImageUrl(tetIn.logo_url);
+  const tv = validateTetapan(tetIn);
+  Object.assign(errors, tv.errors || {});
+
+  const templat = r.templat === 'kosong' ? 'kosong' : r.templat === 'raya' || r.templat === undefined ? 'raya' : null;
+  if (!templat) errors.templat = 'Pilih templat slot.';
+
+  const av = validateAddons(r.addons);
+  if (!av.ok) errors.addons = av.errors.join(' ');
+  const bv = validateBanners(r.banners);
+  if (!bv.ok) errors.banners = bv.mesej;
+
+  if (Object.keys(errors).length) return { ok: false, errors, warnings: tv.warnings || {} };
+  return {
+    ok: true,
+    errors: {},
+    warnings: tv.warnings || {},
+    value: { slug: r.slug, tetapan: tv.value, templat, addons: av.value, banners: bv.value }
+  };
 }

@@ -246,6 +246,19 @@ export function tetapanToRows(obj, nowIso) {
   });
 }
 
+// Nilai Tetapan untuk seed Sheet baharu: input wizard + nilai lalai. Kunci "defaultFrom" (tajuk_hero,
+// harga_special) dibiarkan KOSONG supaya ia terus mengikut nama_studio/harga_normal bila itu diubah kelak.
+export function seedTetapan(values = {}) {
+  const out = {};
+  for (const key of TETAPAN_KEYS) {
+    const spec = TETAPAN_SPEC[key];
+    if (values[key] !== undefined && values[key] !== null) out[key] = values[key];
+    else if (spec.defaultFrom) out[key] = '';
+    else if ('default' in spec) out[key] = spec.default;
+  }
+  return out;
+}
+
 // Config awam (BSD 5: tanpa arahan_deposit sebelum tempahan dibuat).
 export function publicTetapan(tetapan) {
   const { arahan_deposit, ...rest } = tetapan; // eslint-disable-line no-unused-vars

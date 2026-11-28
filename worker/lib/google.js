@@ -162,3 +162,43 @@ export function driveGetFile(fetchFn, accessToken, id) {
   const u = `${DRIVE}/${encodeURIComponent(id)}?fields=id,name,trashed,mimeType`;
   return gapi(fetchFn, accessToken, u, { method: 'GET' });
 }
+
+// Baca metadata Sheet (tab, sheetId). Ralat 404/403 = Sheet hilang atau tiada akses.
+export function spreadsheetGet(fetchFn, accessToken, id) {
+  const fields = 'spreadsheetId,spreadsheetUrl,properties.title,sheets.properties(sheetId,title,index,gridProperties)';
+  const u = `${SHEETS}/${encodeURIComponent(id)}?fields=${encodeURIComponent(fields)}`;
+  return gapi(fetchFn, accessToken, u, { method: 'GET' });
+}
+
+export function spreadsheetBatchUpdate(fetchFn, accessToken, id, requests) {
+  const u = `${SHEETS}/${encodeURIComponent(id)}:batchUpdate`;
+  return gapi(fetchFn, accessToken, u, { method: 'POST', body: JSON.stringify({ requests }) });
+}
+
+// data: [{ range, values }] ditulis RAW (tiada formula dihuraikan)
+export function valuesBatchUpdate(fetchFn, accessToken, id, data) {
+  const u = `${SHEETS}/${encodeURIComponent(id)}/values:batchUpdate`;
+  return gapi(fetchFn, accessToken, u, { method: 'POST', body: JSON.stringify({ valueInputOption: 'RAW', data }) });
+}
+
+export function valuesBatchGet(fetchFn, accessToken, id, ranges) {
+  const q = ranges.map((r) => 'ranges=' + encodeURIComponent(r)).join('&');
+  const u = `${SHEETS}/${encodeURIComponent(id)}/values:batchGet?${q}&valueRenderOption=UNFORMATTED_VALUE`;
+  return gapi(fetchFn, accessToken, u, { method: 'GET' });
+}
+
+export function sheetUrl(id) {
+  return 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(id) + '/edit';
+}
+
+// Indeks lajur (0) -> huruf A1 (A, B, ..., Z, AA)
+export function colLetter(i) {
+  let s = '';
+  let n = i + 1;
+  while (n > 0) {
+    const r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}

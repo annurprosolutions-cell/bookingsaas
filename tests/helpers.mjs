@@ -1,5 +1,7 @@
 // Pembantu ujian Worker. Fixture asas ada dalam tests/fixtures/.
 import { TenantLock } from '../worker/tenant-lock.js';
+import { clearTokenCache } from '../worker/registry.js';
+import { handle } from '../worker/index.mjs';
 import { b64urlEncode } from '../worker/lib/crypto.js';
 import { fakeKv } from './fixtures/fake-kv.mjs';
 import { fakeGoogle, fakeIdToken, CLIENT_ID } from './fixtures/fake-google.mjs';
@@ -48,7 +50,9 @@ export function makeEnv(google, extra = {}) {
     TURNSTILE_SITE_KEY: '0x4AAAAAAAAAAA-site',
     BCL_FORM_ID: '123',
     OWNER_EMAILS: 'pemilik@gmail.com',
-    SPIKE_EMAILS: 'ujian@gmail.com',
+    TRIAL_DAYS: '14',
+    GRACE_DAYS: '7',
+    BUY_URL: 'https://annurprosolutions1.bcl.my/form/annur-booking',
     ALLOWED_ORIGINS: 'https://booking.annurpro.com',
     REGISTRY: fakeKv(),
     ASSETS: fakeAssets({
@@ -57,6 +61,7 @@ export function makeEnv(google, extra = {}) {
     ...extra
   };
   env.TENANT_LOCK = fakeDoNamespace(() => env, google ? google.fetch : fetch);
+  clearTokenCache();
   return env;
 }
 
@@ -68,3 +73,44 @@ export function req(path, { method = 'GET', body, token, headers = {} } = {}) {
   if (token) h.authorization = 'Bearer ' + token;
   return new Request(ORIGIN + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) });
 }
+
+// Jam tetap: 01/12/2026 10:00 waktu Malaysia
+export const NOW = Date.parse('2026-12-01T02:00:00Z');
+export const XHR = { 'x-requested-with': 'XMLHttpRequest', origin: ORIGIN };
+
+// Panggil Worker dan pulangkan { status, j }
+export async function call(env, g, path, { method = 'GET', body, token, headers = {}, now = NOW } = {}) {
+  const r = await handle(req(path, { method, body, token, headers: { ...(method !== 'GET' ? XHR : {}), ...headers } }), env, {
+    fetch: g.fetch,
+    now: () => now
+  });
+  const text = await r.text();
+  let j = null;
+  try {
+    j = JSON.parse(text);
+  } catch {
+    j = { _text: text };
+  }
+  return { status: r.status, j };
+}
+
+export const login = (env, g, opts = {}) => call(env, g, '/api/auth/google', { method: 'POST', body: { code: '4/kod' }, ...opts });
+
+export const WIZARD = {
+  nama_studio: 'Wakanda Studio',
+  slug: 'wakanda',
+  whatsapp: '012-345 6789',
+  alamat: 'Lot 1, Jalan Raya\nKuala Lumpur',
+  maps_url: 'https://maps.app.goo.gl/abc123',
+  waktu_pagi: '09:00 - 12:00',
+  waktu_petang: '14:00 - 18:00',
+  waktu_malam: '21:00 - 23:00',
+  warna_utama: '#F97316',
+  logo_url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQr/view?usp=sharing',
+  banners: ['https://i.postimg.cc/abc/banner.jpg', ''],
+  harga_normal: 80,
+  harga_special: '',
+  deposit: 50,
+  addons: [{ nama: 'Frame', harga: 30 }, { nama: '', harga: '' }],
+  templat: 'raya'
+};
